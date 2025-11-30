@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tria Quiz</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* Custom styles for the dark theme and font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
+        /* UPDATED: Gradient color variables and edge animation for DARK THEME */
+        :root {
+            /* DARK THEME COLORS - ADJUSTED FOR DARKER CARD AND BOXES */
+            --bg-bright: #121212; /* Very dark background */
+            --bg-darker-card: #181818; /* Card background color matching the provided image */
+            --card-dark: #282828; /* Darker for inner elements like input fields */
+            --card-hover: #3a3a3a; /* Darker hover state for buttons */
+            --text-main: #e0e0e0; /* Light text for readability on dark background */
+            --text-sub: #a0a0a0; /* Subtler light grey for secondary text */
+            
+            /* ACCENT GRADIENT COLORS (Retained for edge border and timer) */
+            --new-gradient-color1: #a020f0; /* Purple */
+            --new-gradient-color2: #00bcd4; /* Cyan */
+            --new-gradient-color3: #ffcc00; /* Yellow */
+
+            /* Variables for the rotating gradient effect */
+            --border-gradient: linear-gradient(90deg, var(--new-gradient-color1), var(--new-gradient-color2), var(--new-gradient-color3), var(--new-gradient-color1));
+            --border-width: 3px; /* Thickness of the rotating border */
+            --border-radius: 1.5rem; /* Match app-container or card radius */
+        }
+
+        html { font-size: clamp(14px, 1.6vw, 18px); }
+        body {
+            font-family: Inter, sans-serif;
+            background-color: var(--bg-bright); /* Dark background */
+            color: var(--text-main); /* Light text */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            position: relative; 
+            z-index: 0;
+        }
+        
+        /* New: Rotating gradient on app-container edges */
+        #app-container {
+            width: 100%;
+            max-width: 480px;
+            min-width: 320px;
+            background-color: var(--bg-darker-card); /* Darker card background */
+            border-radius: var(--border-radius);
+            position: relative;
+            z-index: 1;
+            padding: 4px; /* Space for the pseudo-element border */
+            overflow: hidden; /* To contain the rotating pseudo-element */
+        }
+
+        #app-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--border-gradient);
+            background-size: 300% 300%;
+            border-radius: inherit;
+            margin: calc(var(--border-width) * -1); /* Extend border beyond padding */
+            z-index: -1; /* Place behind the actual content */
+            animation: rotateGradient 4s linear infinite;
+        }
+
+        /* The actual content wrapper inside app-container */
+        #quiz-settings-screen, #quiz-content, #results-screen {
+            background-color: var(--bg-darker-card); /* Match app-container background */
+            border-radius: calc(var(--border-radius) - 4px); /* Slightly smaller radius for nested element */
+            height: 100%; /* Fill the container */
+            padding: 1.5rem; /* Adjusted padding for better dark theme feel */
+        }
+        @keyframes rotateGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* ---------------------------------------------------- */
+        /* TRIA Title: White text with glow for dark background */
+        /* Decreased lightness/intensity of the glow */
+        .title-glow {
+            color: white; 
+            -webkit-text-fill-color: white; 
+            text-shadow: 
+                0 0 8px rgba(255, 255, 255, 0.4), /* Reduced white core glow opacity/spread */
+                0 0 15px rgba(0, 188, 212, 0.3); /* Reduced cyan secondary glow opacity/spread */
+        }
+        /* ---------------------------------------------------- */
+
+
+        /* --- BUTTON STYLING (Difficulty/Begin Quiz) --- */
+        
+        /* UPDATED: Inactive/Secondary Buttons (White) */
+        .bg-inactive {
+            background-color: white; /* White background */
+            color: #121212; /* Dark text */
+            border: 1px solid #c0c0c0; /* Light border */
+            box-shadow: 0 0 5px rgba(0,0,0,.3);
+        }
+
+        /* UPDATED: Active Difficulty Button (White with Cyan Glow) */
+        .active-diff-btn {
+            background-color: white !important; /* Force white */
+            color: #121212 !important; /* Force dark text */
+            border: 2px solid var(--new-gradient-color2) !important; /* Highlight border */
+            /* Adjusted glow intensity for white background */
+            box-shadow: 0 0 15px rgba(0, 188, 212, 0.6); /* Slightly stronger for white */
+            transform: scale(1.05);
+        }
+        .active-diff-btn:hover {
+            transform: scale(1.08); /* Enhance hover effect */
+        }
+        
+        /* Begin Quiz Button (White with Cyan Glow) */
+        .bg-begin-quiz {
+            background-color: white;
+            color: #121212;
+            border: none;
+            font-weight: 800;
+            box-shadow: 0 0 20px rgba(0, 188, 212, 0.6), 0 5px 15px rgba(0, 0, 0, 0.5); /* Cyan glow for primary button */
+            transition: transform .2s, box-shadow .2s;
+        }
+        .bg-begin-quiz:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(160, 32, 240, 0.8), 0 5px 15px rgba(0, 0, 0, 0.8); /* Purple glow on hover */
+            opacity: 1;
+        }
+        /* --- END OF BUTTON STYLING --- */
+
+
+        /* Form Fields (White) */
+        .input-field {
+            background-color: white; /* Changed to White */
+            border: 1px solid #c0c0c0; 
+            color: #121212; /* Changed to Dark Text */
+            padding: .75rem 1rem;
+            border-radius: .75rem;
+            box-shadow: 0 0 5px rgba(0,0,0,.3);
+            font-weight: 600; /* Added weight for better visibility */
+        }
+        /* Placeholder styling for dark mode */
+        .input-field::placeholder { 
+            color: #555555; /* Dark placeholder text */
+            opacity: 0.8; 
+        }
+
+        /* Quiz Status Boxes (White with Cyan Glow) */
+        .quiz-stat-box {
+            background-color: white; /* Solid white background */
+            color: #121212; /* Dark text for contrast */
+            border: none; 
+            padding: .5rem;
+            border-radius: .75rem;
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.6); /* Stronger cyan glow */
+        }
+        /* Ensure text inside quiz-stat-box is dark and readable */
+        .quiz-stat-box div {
+            color: #1a1a1a !important; /* Force dark text color */
+            text-shadow: 0 0 3px rgba(0,0,0,0.1); 
+        }
+        .quiz-stat-box div.text-sm {
+            color: #2a2a2a !important; /* Slightly lighter dark for sub-text */
+        }
+        
+        /* Answer Buttons (Dark background for choices) */
+        .answer-button {
+            background-color: var(--card-dark); 
+            color: var(--text-main); 
+            border: 1px solid #4a4a4a; 
+            padding: .75rem;
+            border-radius: .75rem;
+            transition: all 0.2s ease;
+        }
+        .answer-button:hover:not(:disabled) {
+            background-color: var(--card-hover); 
+            color: var(--text-main);
+        }
+        .answer-button:disabled { cursor: not-allowed; opacity: 0.7; }
+        
+        /* Question Box (Dark background) */
+        #quiz-content .p-4.rounded-xl.bg-gray-200 {
+            background-color: var(--card-dark); 
+            color: var(--text-main);
+            border: 1px solid #4a4a4a; 
+            box-shadow: 0 0 10px rgba(0,0,0,.2);
+        }
+        #quiz-content .text-gray-600 {
+            color: var(--text-sub);
+        }
+        #quiz-content .text-gray-900 {
+            color: var(--text-main);
+        }
+
+        /* Timer Bar */
+        .timer-bar-container-top {
+            background: #2c2c2c; 
+        }
+        .timer-bar {
+            background: linear-gradient(to right, var(--new-gradient-color2), var(--new-gradient-color1)); 
+        }
+
+        /* Results Screen */
+        .results-card {
+            background: var(--bg-darker-card); 
+            border: 1px solid #3a3a3a; 
+            box-shadow: 0 0 25px rgba(0,0,0,.5); 
+        }
+        /* Result Stat Boxes (White with Cyan Glow) */
+        .result-stat-box {
+            background-color: white; 
+            color: #121212; 
+            border: none; 
+            padding: .75rem;
+            border-radius: .75rem;
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.6); 
+        }
+        /* Ensure text inside result-stat-box is dark and readable */
+        .result-stat-box div {
+            color: #1a1a1a !important; 
+            text-shadow: 0 0 3px rgba(0,0,0,0.1); 
+        }
+        .result-stat-box div.text-xs {
+            color: #2a2a2a !important; 
+        }
+
+        /* Results header text: White for visibility */
+        /* UPDATED: text-gradient-cyan-blue to be white */
+        .text-gradient-cyan-blue { 
+            color: white !important; 
+            -webkit-text-fill-color: white !important; 
+            background: none !important; 
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); /* White glow for results text */
+        }
+        /* NEW: Force the appreciation word (Intuition/IQ) to white */
+        #intuition-iq-message {
+            color: white !important; 
+        }
+        /* NEW: Force the result message text to white */
+        #result-message {
+            color: white !important; 
+        }
+
+        .screenshot-wrapper-padded {
+            padding: 1rem;
+            background-color: var(--bg-bright); 
+        }
+        .text-gray-700 { /* Target general grey text that should be lighter */
+             color: var(--text-sub);
+        }
+        .text-gray-600 { /* Target general grey text that should be lighter */
+             color: var(--text-sub);
+        }
+        .text-gray-900 { /* Target general dark text that should be light */
+             color: var(--text-main);
+        }
+        .text-gray-500 { /* Target lightest text */
+             color: #6a6a6a;
+        }
+
+
+        /* Status classes for feedback (kept bright for contrast) */
+        .correct-answer { background-color: #059669 !important; border-color: #10b981 !important; color: white !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+        .wrong-answer { background-color: #991b1b !important; border-color: #ef4444 !important; color: white !important; opacity: 0.8; }
+        
+        /* NEW: Custom class for the Share on X button gradient (Cyan to Blue) */
+        .bg-share-x-gradient {
+            background-image: linear-gradient(to right, #00BCD4, #008CBA); /* Cyan to slightly darker blue/cyan */
+        }
+        .bg-share-x-gradient:hover {
+            opacity: 0.9;
+            box-shadow: 0 0 15px rgba(0, 188, 212, 0.8);
+        }
+
+        /* Responsive tweaks */
+        @media (min-width: 768px) {
+            #app-container { max-width: 800px; }
+        }
+        /* STARTUP FIX: Ensure settings screen is visible by default */
+        #quiz-settings-screen { display: flex; }
+        #quiz-content, #results-screen { display: none; }
+    </style>
+</head>
+<body class="p-2 sm:p-4 md:p-8">
+
+<div id="app-container" class="w-full max-w-xl mx-auto rounded-2xl">
+    
+
+<div id="content-wrapper" class="relative w-full h-full rounded-2xl overflow-hidden">
+        
+
+<!-- REMOVED 'hidden' class and ensured it starts as flex via inline style fix at bottom -->
+<div id="quiz-settings-screen" class="flex flex-col items-center w-full">
+            <h1 class="text-4xl font-black mb-0 uppercase tracking-wider text-center flex justify-center items-center">
+                <span class="title-glow">TRIA</span>
+                <span class="title-glow ml-2">QUIZ</span>
+            </h1>
+            
+
+<p class="text-sm text-white mt-2 mb-8 text-center tracking-wider">Test Your Knowledge About Tria</p>
+
+            <div class="w-full mb-8">
+                
+
+<label for="user-name-input" class="block text-sm font-bold text-white uppercase tracking-widest mb-2
+                    text-center">Your Name</label>
+                <input type="text" id="user-name-input" placeholder="e.g., Jane Doe" class="w-full input-field text-center">
+            </div>
+
+            <div class="w-full mb-8">
+                
+
+<h3 class="text-sm font-bold text-white uppercase tracking-widest mb-3 text-center">DIFFICULTY LEVEL (Q Count & Time)</h3>
+                <div class="grid grid-cols-3 gap-3 w-full">
+                    <button onclick="selectDifficulty('easy')" id="btn-diff-easy" class="diff-btn relative rounded-xl p-3 flex flex-col items-center justify-center transition-all duration-200 bg-inactive h-24">
+                        <span class="text-base font-bold mb-1">Easy (10Q)</span>
+                        <span class="time-display text-[10px] opacity-60 leading-tight text-center">12s per question</span>
+                    </button>
+                    <button onclick="selectDifficulty('medium')" id="btn-diff-medium" class="diff-btn relative rounded-xl p-3 flex flex-col items-center justify-center transition-all duration-200 bg-inactive h-24">
+                        <span class="text-base font-bold mb-1">Medium (10Q)</span>
+                        <span class="time-display text-[10px] opacity-60 leading-tight text-center">8s per question</span>
+                    </button>
+                    <button onclick="selectDifficulty('hard')" id="btn-diff-hard" class="diff-btn relative rounded-xl p-3 flex flex-col items-center justify-center transition-all duration-200 bg-inactive h-24">
+                        <span class="text-base font-bold mb-1">Hard (10Q)</span>
+                        <span class="time-display text-[10px] opacity-60 leading-tight text-center">4s per question</span>
+                    </button>
+                </div>
+            </div>
+
+            
+
+<button onclick="startGame()" class="w-full sm:w-1/2 py-4 rounded-xl font-bold text-lg bg-begin-quiz hover:scale-[1.03] transition-transform duration-200 mb-6">
+                Begin Quiz
+            </button>
+
+            <p id="error-msg" class="text-red-500 text-xs mt-0 mb-4 h-4 text-center"></p>
+        </div>
+
+        
+
+<!-- ADDED 'hidden' class to explicitly hide it on load -->
+<div id="quiz-content" class="hidden flex-col w-full relative overflow-hidden">
+            <div class="timer-bar-container-top"><div id="timer-bar" class="timer-bar w-full"></div></div>
+
+            
+
+<div class="text-center text-sm font-bold text-white uppercase tracking-widest mt-4 mb-4" id="player-name-display">PLAYER</div>
+
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <div class="quiz-stat-box rounded-lg p-2 text-center">
+                    <div class="text-sm font-semibold text-gray-600 leading-none">Score:</div>
+                    <div class="text-lg font-bold text-gray-900 leading-tight" id="score-display">0</div>
+                </div>
+                <div class="quiz-stat-box rounded-lg p-2 text-center">
+                    <div class="text-sm font-semibold text-gray-600 leading-none">Time:</div>
+                    <div class="text-lg font-bold text-gray-900 leading-tight" id="time-remaining-display">12s</div>
+                </div>
+                <div class="quiz-stat-box rounded-lg p-2 text-center">
+                    <div class="text-sm font-semibold text-gray-600 leading-none">Progress:</div>
+                    <div class="text-lg font-bold text-gray-900 leading-tight" id="progress-display">1/10</div>
+                </div>
+            </div>
+
+            <div class="mb-8 p-4 rounded-xl bg-gray-200">
+                <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3 text-center" id="category-display-header">Question <span id="current-q-num">1</span>/<span id="total-q-count">10</span></p>
+                <h2 class="text-xl font-bold leading-relaxed text-gray-900 text-center" id="question-text">Question text...</h2>
+            </div>
+
+            <div id="choices-container" class="space-y-3 flex flex-col"></div>
+            <div id="feedback-message" class="mt-4 text-center text-sm font-bold h-6 text-gray-900 min-h-[1.5rem]"></div>
+        </div>
+
+        
+
+<!-- ADDED 'hidden' class to explicitly hide it on load -->
+<div id="results-screen" class="hidden flex-col w-full items-center text-center">
+            <h2 class="text-3xl font-black title-glow mb-1">Quiz Complete</h2>
+            <p class="text-xl font-bold text-white mb-6" id="player-name-result">PLAYER</p>
+
+            <div id="screenshot-wrapper" class="flex flex-col items-center justify-center w-full mb-8">
+                <div id="results-card" class="w-full results-card p-6 sm:p-8 relative overflow-hidden">
+                    
+
+<h3 class="text-2xl font-black uppercase tracking-wider text-center text-white mb-4 relative z-10">TRIA QUIZ RESULTS</h3>
+                    <p class="text-lg font-bold text-white mb-2 relative z-10" id="player-name-result-card">PLAYER</p>
+                    
+                    
+
+<p class="text-sm text-white uppercase tracking-wider mb-6 relative z-10" id="level-q-count-result">EASY LEVEL • 10 QUESTIONS</p>
+                    
+                    <p class="text-6xl font-black text-white mb-2 relative z-10" id="final-percentage">0%</p>
+                    <p class="text-xl font-extrabold text-white uppercase tracking-wider mb-8 relative z-10" id="intuition-iq-message">NOVICE</p>
+
+                    <div class="grid grid-cols-3 gap-4 mb-8 relative z-10">
+                        <div class="result-stat-box rounded-lg p-3 text-center"><div class="text-2xl font-bold text-gray-900" id="result-total-questions">10</div><div class="text-xs font-semibold text-gray-600 uppercase mt-1">QUESTIONS</div></div>
+                        <div class="result-stat-box rounded-lg p-3 text-center"><div class="text-2xl font-bold text-gray-900" id="result-score">0</div><div class="text-xs font-semibold text-gray-600 uppercase mt-1">SCORE</div></div>
+                        <div class="result-stat-box rounded-lg p-3 text-center"><div class="text-2xl font-bold text-gray-900" id="result-max-streak">0</div><div class="text-xs font-semibold text-gray-600 uppercase mt-1">MAX STREAK</div></div>
+                    </div>
+
+                    
+
+<p class="text-sm text-white leading-relaxed mb-6 relative z-10" id="result-message">Your knowledge base needs to be solidified. Review the core concepts and try again!</p>
+                    
+                    
+
+<div class="text-xs text-white mb-2 relative z-10" id="results-footer-tria-quiz">TRIA Quiz</div>
+                    <div class="text-xs text-white relative z-10" id="results-footer-date">November 27, 2025</div>
+                </div>
+            </div>
+
+            <div class="w-full flex flex-col gap-3 mb-6 mt-2">
+                
+
+<button onclick="shareOnX()" id="btn-share" class="w-full py-3 active:scale-95 transition-transform rounded-xl font-bold text-md bg-share-x-gradient text-white hover:opacity-90 transition-opacity">Share on X</button>
+                
+                
+
+<button onclick="downloadResults()" id="btn-download" class="w-full py-3 active:scale-95 transition-transform rounded-xl font-bold text-md bg-gradient-to-r from-[#8A2BE2] to-[#9932CC] text-white hover:opacity-90 transition-opacity">Download Results</button>
+                <button onclick="resetGame()" id="btn-try" class="w-full py-3 rounded-xl font-bold text-md bg-zinc-700 text-white hover:bg-zinc-600 transition-colors">Try Again</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- DATA ---
+    const FIXED_ANSWER_PATTERNS = {
+        easy: ['B', 'C', 'A', 'C', 'B', 'A', 'B', 'A', 'C', 'B'], 
+        medium: ['C', 'A', 'B', 'B', 'C', 'A', 'A', 'B', 'C', 'B'], 
+        hard: ['B', 'A', 'A', 'B', 'C', 'B', 'C', 'C', 'A', 'A'] 
+    };
+    
+    const QUIZ_DATA_BY_DIFFICULTY = {
+        easy: [
+            {question:"What is Tria?",answerOptions:[{text:"A self-custodial neobank",isCorrect:true},{text:"A new gaming console",isCorrect:false},{text:"A social media platform",isCorrect:false}]},
+            {question:"How do you create a Tria account?",answerOptions:[{text:"By visiting app.tria.so and signing up",isCorrect:true},{text:"By sending an email to their support",isCorrect:false},{text:"Only through an exclusive invitation",isCorrect:false}]},
+            {question:"What does Tria allow you to spend?",answerOptions:[{text:"1,000+ tokens via Visa card",isCorrect:true},{text:"Only fiat currency",isCorrect:false},{text:"Just specific company gift cards",isCorrect:false}]},
+            {question:"How can you link your X account to Tria for campaigns?",answerOptions:[{text:"Through the campaign page or profile section",isCorrect:true},{text:"It links automatically",isCorrect:false},{text:"By manually typing your handle into Tria support chat",isCorrect:false}]},
+            {question:"Which payment methods does Tria support for spending crypto?",answerOptions:[{text:"Apple Pay/Google Pay",isCorrect:true},{text:"PayPal only",isCorrect:false},{text:"Direct bank transfers",isCorrect:false}]},
+            {question:"What is a primary feature of Tria for crypto assets?",answerOptions:[{text:"Effortless cross-chain swaps",isCorrect:true},{text:"Lending only",isCorrect:false},{text:"NFTs marketplace",isCorrect:false}]},
+            {question:"What are SNAPS related to in Tria's campaign?",answerOptions:[{text:"A reward earned through engagement",isCorrect:true},{text:"A type of Tria gift card",isCorrect:false},{text:"A new Tria product",isCorrect:false}]},
+            {question:"How do you access your Tria wallet details?",answerOptions:[{text:"In the Tria dashboard under \"Receive Crypto\"",isCorrect:true},{text:"By contacting customer support",isCorrect:false},{text:"Only via a desktop application",isCorrect:false}]},
+            {question:"Who is one of Tria's co-founders?",answerOptions:[{text:"Vijit Katta",isCorrect:true},{text:"Elon Musk",isCorrect:false},{text:"Satoshi Nakamoto",isCorrect:false}]},
+            {question:"What is a quick way to sign up for Tria?",answerOptions:[{text:"By connecting your Google or Apple account",isCorrect:true},{text:"Through a complex coding process",isCorrect:false},{text:"By filling out a physical form",isCorrect:false}]}
+        ],
+        medium:[
+            {question:"What must you do to earn cSNAPS in the Tria campaign?",answerOptions:[{text:"Connect your wallet on cookie.fun, commit capital, and post on X",isCorrect:true},{text:"Just visit the Tria website once",isCorrect:false},{text:"Participate in a weekly quiz",isCorrect:false}]},
+            {question:"What are the Tria Card options?",answerOptions:[{text:"Virtual, Signature, Premium",isCorrect:true},{text:"Debit, Credit, Loan",isCorrect:false},{text:"Gold, Silver, Bronze",isCorrect:false}]},
+            {question:"What is a benefit of the Tria Premium Membership (Metal Card)?",answerOptions:[{text:"Guaranteed allocation in the community round",isCorrect:true},{text:"Free unlimited movie tickets",isCorrect:false},{text:"Exclusive access to gaming tournaments",isCorrect:false}]},
+            {question:"What does the Legion Score combine to identify genuine participants?",answerOptions:[{text:"Wallet activity, social presence, developer reputation",isCorrect:true},{text:"Age, height, weight",isCorrect:false},{text:"Mooing abilities and fashion sense",isCorrect:false}]},
+            {question:"How does trading volume on Tria affect your cSNAPS?",answerOptions:[{text:"Higher volume leads to a higher multiplier",isCorrect:true},{text:"It has no effect",isCorrect:false},{text:"Lower volume increases your multiplier",isCorrect:false}]},
+            {question:"What is the required $COOKIE staking tier for a 5x cSNAPS multiplier?",answerOptions:[{text:"Diamond tier (25K+ $COOKIE)",isCorrect:true},{text:"Silver tier",isCorrect:false},{text:"Bronze tier",isCorrect:false}]},
+            {question:"If referring via cookie.fun, what must your referee do for your multiplier to count?",answerOptions:[{text:"Trade on Tria with the same wallet connected to cookie.fun",isCorrect:true},{text:"Trade on any platform",isCorrect:false},{text:"Send you an email confirmation",isCorrect:false}]},
+            {question:"What action provides cSNAPS multipliers that stack?",answerOptions:[{text:"Capital actions like staking and trading",isCorrect:true},{text:"Logging in daily",isCorrect:false},{text:"Sending a thank you note",isCorrect:false}]},
+            {question:"What is the minimum trading volume on Tria to qualify for a cSNAPS multiplier?",answerOptions:[{text:"$1,000",isCorrect:true},{text:"$100",isCorrect:false},{text:"$10,000",isCorrect:false}]},
+            {question:"What is the purpose of \"Snapshots every hour\" in relation to cSNAPS multipliers?",answerOptions:[{text:"To dynamically apply multipliers based on trading volume",isCorrect:true},{text:"To take photos of users",isCorrect:false},{text:"To capture screenshots for social media",isCorrect:false}]}
+        ],
+        hard:[
+            {question:"What core problem does Tria aim to solve in finance?",answerOptions:[{text:"Unifying trading, spending, and earning in a self-custodial app",isCorrect:true},{text:"Lack of gaming platforms",isCorrect:false},{text:"Providing free food delivery services",isCorrect:false}]},
+            {question:"What blockchain is Tria built on?",answerOptions:[{text:"Arbitrum",isCorrect:true},{text:"Binance Smart Chain",isCorrect:false},{text:"Ethereum Mainnet",isCorrect:false}]},
+            {question:"Beyond not being a first-come, first-serve race, how is Tria's sale designed?",answerOptions:[{text:"To reward belief and conviction of users",isCorrect:true},{text:"To reward random luck",isCorrect:false},{text:"Based on who signs up earliest",isCorrect:false}]},
+            {question:"What is the significance of \"Infrastructure integration\" for Tria?",answerOptions:[{text:"It embeds Tria into partner ecosystems",isCorrect:true},{text:"It means Tria builds roads",isCorrect:false},{text:"It helps with building new offices",isCorrect:false}]},
+            {question:"What is the main advantage Tria has over traditional neobanks or isolated Web3 protocols?",answerOptions:[{text:"Its integration depth across consumer, infrastructure, and protocol layers",isCorrect:true},{text:"It offers better customer service",isCorrect:false},{text:"It has more colors in its app design",isCorrect:false}]},
+            {question:"How does \"AI interoperability\" expand Tria's network relevance?",answerOptions:[{text:"As autonomous agents begin participating in the economy",isCorrect:true},{text:"By generating random art",isCorrect:false},{text:"By allowing robots to chat",isCorrect:false}]},
+            {question:"What is \"BestPath\" within the Tria ecosystem?",answerOptions:[{text:"A feature for trading and optimizing transactions",isCorrect:true},{text:"A hiking trail guide",isCorrect:false},{text:"A recommended career path",isCorrect:false}]},
+            {question:"What does \"Tria is not a single product\" imply about its vision?",answerOptions:[{text:"It is the connective infrastructure for the next generation of finance",isCorrect:true},{text:"It's just a collection of unrelated apps",isCorrect:false},{text:"It frequently changes its offerings",isCorrect:false}]},
+            {question:"Who must you KYC with to invest in Tria's sale (if applicable)?",answerOptions:[{text:"Legion",isCorrect:true},{text:"Your local bank",isCorrect:false},{text:"Tria directly",isCorrect:false}]},
+            {question:"What benefit does \"Consumer adoption\" bring to Tria's system?",answerOptions:[{text:"It drives transactional liquidity",isCorrect:true},{text:"It increases marketing costs",isCorrect:false},{text:"It makes the app slower",isCorrect:false}]}
+        ]
+    };
+
+    // --- STATE ---
+    let gameState = {
+        userName: '',
+        difficulty: 'easy',
+        currentQuestionIndex: 0,
+        score: 0,
+        questions: [],
+        timeRemaining: 0,
+        timerInterval: null,
+        isAnswerSelected: false,
+        maxStreak: 0,
+        currentStreak: 0,
+        totalTimeSpent: 0,
+        startTime: null,
+        questionStartTime: 0
+    };
+
+    // --- DOM ELEMENTS ---
+    const settingsScreen = document.getElementById('quiz-settings-screen');
+    const quizContent = document.getElementById('quiz-content');
+    const resultsScreen = document.getElementById('results-screen');
+    const userNameInput = document.getElementById('user-name-input');
+    const scoreDisplay = document.getElementById('score-display');
+    const timeRemainingDisplay = document.getElementById('time-remaining-display');
+    const progressDisplay = document.getElementById('progress-display');
+    const questionTextElement = document.getElementById('question-text');
+    const choicesContainer = document.getElementById('choices-container');
+    const timerBar = document.getElementById('timer-bar');
+    const feedbackMessage = document.getElementById('feedback-message');
+    const errorMsg = document.getElementById('error-msg');
+    const playerNameDisplay = document.getElementById('player-name-display');
+
+    const finalPercentageEl = document.getElementById('final-percentage');
+    const resultScoreEl = document.getElementById('result-score');
+    const resultTotalQuestionsEl = document.getElementById('result-total-questions');
+    const resultMaxStreakEl = document.getElementById('result-max-streak');
+    const intuitionIQMessage = document.getElementById('intuition-iq-message');
+    const resultMessage = document.getElementById('result-message');
+    const resultsFooterDate = document.getElementById('results-footer-date');
+    const screenshotWrapper = document.getElementById('screenshot-wrapper');
+    const playerNameResultCard = document.getElementById('player-name-result-card');
+    const levelQCountResult = document.getElementById('level-q-count-result');
+    const resultTotalQuestions = document.getElementById('result-total-questions');
+    const resultScore = document.getElementById('result-score');
+    const resultMaxStreak = document.getElementById('result-max-streak');
+    const finalPercentage = document.getElementById('final-percentage');
+
+    // --- CONSTANTS ---
+    const TIME_PER_QUESTION = {
+        easy: 12,
+        medium: 8,
+        hard: 4
+    };
+    const MAX_QUESTIONS = 10;
+    const QUIZ_LETTERS = ['A', 'B', 'C'];
+
+    // --- INITIALIZATION ---
+    window.onload = function() {
+        selectDifficulty('easy');
+        // Explicitly call showScreen to ensure the first screen loads immediately
+        showScreen('quiz-settings-screen');
+    };
+
+    // --- FUNCTIONS ---
+
+    function selectDifficulty(difficulty) {
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.classList.remove('active-diff-btn');
+        });
+
+        const selectedBtn = document.getElementById(`btn-diff-${difficulty}`);
+        if (selectedBtn) {
+            selectedBtn.classList.add('active-diff-btn');
+        }
+
+        gameState.difficulty = difficulty;
+    }
+
+    function startGame() {
+        const name = userNameInput.value.trim();
+        if (name.length < 2) {
+            errorMsg.textContent = 'Please enter a name (at least 2 characters).';
+            return;
+        }
+
+        errorMsg.textContent = '';
+        gameState.userName = name.toUpperCase();
+        gameState.currentQuestionIndex = 0;
+        gameState.score = 0;
+        gameState.currentStreak = 0;
+        gameState.maxStreak = 0;
+        gameState.totalTimeSpent = 0;
+        gameState.startTime = Date.now();
+        gameState.questions = prepareQuizQuestions(gameState.difficulty);
+
+        playerNameDisplay.textContent = gameState.userName;
+
+        showScreen('quiz-content');
+        startQuestion();
+    }
+
+    function prepareQuizQuestions(difficulty) {
+        const rawQuestions = QUIZ_DATA_BY_DIFFICULTY[difficulty];
+        const answerPattern = FIXED_ANSWER_PATTERNS[difficulty];
+        
+        return rawQuestions.map((q, qIndex) => {
+            const correctAnswer = q.answerOptions.find(opt => opt.isCorrect);
+            const correctLetter = answerPattern[qIndex];
+            const correctIndex = QUIZ_LETTERS.indexOf(correctLetter);
+            const incorrectAnswers = q.answerOptions.filter(opt => !opt.isCorrect);
+            const tempChoices = new Array(3);
+            tempChoices[correctIndex] = correctAnswer;
+            let incorrectIndex = 0;
+            for (let i = 0; i < 3; i++) {
+                if (!tempChoices[i]) {
+                    tempChoices[i] = { 
+                        text: incorrectAnswers[incorrectIndex].text, 
+                        isCorrect: false 
+                    };
+                    incorrectIndex++;
+                }
+            }
+            const finalChoices = tempChoices.map((choice, index) => ({
+                text: choice.text,
+                isCorrect: choice.isCorrect,
+                label: QUIZ_LETTERS[index]
+            }));
+
+            return {
+                question: q.question,
+                answerOptions: finalChoices,
+                correctAnswerLabel: correctLetter 
+            };
+        });
+    }
+
+    function startQuestion() {
+        if (gameState.currentQuestionIndex >= MAX_QUESTIONS) {
+            endGame();
+            return;
+        }
+
+        clearInterval(gameState.timerInterval);
+        gameState.isAnswerSelected = false;
+        feedbackMessage.textContent = '';
+        
+        const question = gameState.questions[gameState.currentQuestionIndex];
+        const timeLimit = TIME_PER_QUESTION[gameState.difficulty];
+        gameState.timeRemaining = timeLimit;
+        gameState.questionStartTime = Date.now();
+
+        progressDisplay.textContent = `${gameState.currentQuestionIndex + 1}/${MAX_QUESTIONS}`;
+        timeRemainingDisplay.textContent = `${timeLimit}s`;
+        questionTextElement.textContent = question.question;
+        timerBar.style.width = '100%';
+        timerBar.style.transition = 'width 0s';
+
+        renderChoices(question.answerOptions);
+        startTimer(timeLimit);
+    }
+
+    function renderChoices(options) {
+        choicesContainer.innerHTML = '';
+        options.forEach(option => {
+            const button = document.createElement('button');
+            button.className = 'answer-button text-left active:scale-[.99] hover:bg-gray-700 transition-all duration-150';
+            button.innerHTML = `<span class="font-bold mr-3">${option.label}:</span> ${option.text}`;
+            button.onclick = () => checkAnswer(option.label, option.isCorrect, button);
+            button.setAttribute('data-label', option.label); 
+            choicesContainer.appendChild(button);
+        });
+    }
+
+    function startTimer(timeLimit) {
+        timerBar.style.transition = 'width 0s';
+        timerBar.style.width = '100%';
+
+        setTimeout(() => {
+            timerBar.style.transition = `width ${timeLimit}s linear`;
+            timerBar.style.width = '0%';
+        }, 50);
+
+        gameState.timerInterval = setInterval(() => {
+            gameState.timeRemaining--;
+            timeRemainingDisplay.textContent = `${Math.max(0, gameState.timeRemaining)}s`;
+
+            if (gameState.timeRemaining <= 0) {
+                clearInterval(gameState.timerInterval);
+                processAnswer(false, null); 
+            }
+        }, 1000);
+    }
+
+    function checkAnswer(selectedLabel, isCorrect, button) {
+        if (gameState.isAnswerSelected) return;
+        gameState.isAnswerSelected = true;
+        clearInterval(gameState.timerInterval);
+        const timeTaken = Math.max(1, TIME_PER_QUESTION[gameState.difficulty] - gameState.timeRemaining); 
+        gameState.totalTimeSpent += timeTaken;
+        processAnswer(isCorrect, selectedLabel, button);
+    }
+
+    function processAnswer(isCorrect, selectedLabel, selectedButton) {
+        document.querySelectorAll('.answer-button').forEach(btn => {
+            btn.disabled = true;
+        });
+
+        const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+        const correctAnswerLabel = currentQuestion.correctAnswerLabel;
+
+        document.querySelectorAll('.answer-button').forEach(btn => {
+            const label = btn.getAttribute('data-label');
+            if (label === correctAnswerLabel) {
+                btn.classList.add('correct-answer');
+            } else if (label === selectedLabel) {
+                btn.classList.add('wrong-answer');
+            }
+        });
+
+        if (isCorrect) {
+            gameState.score++;
+            gameState.currentStreak++;
+            feedbackMessage.textContent = 'Correct!';
+        } else {
+            gameState.currentStreak = 0;
+            if (selectedLabel) {
+                 feedbackMessage.textContent = `Wrong! The correct answer was ${correctAnswerLabel}.`;
+            } else {
+                 feedbackMessage.textContent = `Time's up! The correct answer was ${correctAnswerLabel}.`;
+            }
+        }
+        
+        gameState.maxStreak = Math.max(gameState.maxStreak, gameState.currentStreak);
+        scoreDisplay.textContent = gameState.score;
+        
+        gameState.currentQuestionIndex++;
+        
+        setTimeout(startQuestion, 2000); 
+    }
+
+    function getResultFeedback() {
+        const percentage = (gameState.score / MAX_QUESTIONS) * 100;
+        let message = {
+            title: 'NOVICE',
+            text: 'Your knowledge base needs to be solidified. Review the core concepts and try again!'
+        };
+        if (percentage >= 90) {
+            message.title = 'TRIA WIZARD';
+            message.text = 'Perfect score! You are a true Tria expert. Your knowledge is essential to the community!';
+        } else if (percentage >= 80) {
+            message.title = 'MASTER OF TRIA';
+            message.text = 'Excellent performance! Your deep understanding of Tria is impressive. Keep leading the way!';
+        } else if (percentage >= 60) {
+            message.title = 'TRIA ADVOCATE';
+            message.text = 'Great job! Solid understanding of the core concepts. A little more study, and you\'ll be a master!';
+        } else if (percentage >= 40) {
+            message.title = 'TRIA LEARNER';
+            message.text = 'Good effort! You grasp the basics, but there\'s room for growth. Focus on the campaign details.';
+        }
+        return message;
+    }
+
+    function endGame() {
+        clearInterval(gameState.timerInterval);
+        const feedback = getResultFeedback();
+        const percentage = (gameState.score / MAX_QUESTIONS) * 100;
+        
+        playerNameResultCard.textContent = gameState.userName;
+        document.getElementById('player-name-result').textContent = gameState.userName;
+        levelQCountResult.textContent = `${gameState.difficulty.toUpperCase()} LEVEL • ${MAX_QUESTIONS} QUESTIONS`;
+        finalPercentage.textContent = `${percentage.toFixed(0)}%`;
+        resultTotalQuestions.textContent = MAX_QUESTIONS;
+        resultScore.textContent = gameState.score;
+        resultMaxStreak.textContent = gameState.maxStreak;
+        intuitionIQMessage.textContent = feedback.title;
+        resultMessage.textContent = feedback.text;
+        
+        const date = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        resultsFooterDate.textContent = date;
+        
+        showScreen('results-screen');
+    }
+
+    function showScreen(screenId) {
+        settingsScreen.style.display = 'none';
+        quizContent.style.display = 'none';
+        resultsScreen.style.display = 'none';
+        
+        const targetScreen = document.getElementById(screenId);
+        if (targetScreen) {
+             targetScreen.style.display = 'flex';
+        }
+    }
+
+    function resetGame() {
+        gameState.userName = '';
+        gameState.difficulty = 'easy';
+        clearInterval(gameState.timerInterval);
+        userNameInput.value = '';
+        selectDifficulty('easy');
+        showScreen('quiz-settings-screen');
+    }
+
+    // MODIFIED DOWNLOAD FUNCTION
+    function downloadResults() {
+        const resultCard = document.getElementById('results-card');
+        
+        // 1. Create a temporary wrapper for the capture
+        const tempWrapper = document.createElement('div');
+        tempWrapper.style.position = 'absolute';
+        tempWrapper.style.left = '-9999px';
+        tempWrapper.style.top = '0';
+        tempWrapper.style.width = '400px'; // FORCE SMALL WIDTH
+        tempWrapper.style.padding = '20px';
+        tempWrapper.style.backgroundColor = '#111827'; // Dark outer background
+        tempWrapper.style.borderRadius = '20px';
+        
+        // 2. Clone the card
+        const cardClone = resultCard.cloneNode(true);
+        
+        // 3. Style the clone for the snapshot
+        cardClone.style.backgroundColor = '#1f2937'; // Dark card background
+        cardClone.style.color = '#f9fafb'; // Light text
+        cardClone.style.boxShadow = 'none'; // Remove default shadow
+        cardClone.style.maxWidth = '100%'; // Ensure it fits in wrapper
+        cardClone.style.margin = '0';
+        
+        // Fix text colors in clone (similar to the React logic I devised earlier)
+        const texts = cardClone.querySelectorAll('*');
+        texts.forEach(el => {
+             // Check for specific elements like the "Easy Level" text which might be gray
+             if (el.id === 'level-q-count-result') el.style.color = '#ffffff';
+             // Ensure other text is white/light
+             if (!el.classList.contains('bg-gradient-to-r')) {
+                 el.style.color = '#f9fafb';
+             }
+             // Ensure stat boxes have dark background
+             if (el.classList.contains('result-stat-box')) {
+                 el.style.backgroundColor = '#374151';
+                 el.style.color = '#f9fafb';
+                 // Ensure text inside stat boxes is white
+                 Array.from(el.children).forEach(child => {
+                    child.style.color = '#f9fafb';
+                 });
+             }
+        });
+
+        tempWrapper.appendChild(cardClone);
+        document.body.appendChild(tempWrapper);
+
+        // 4. Capture
+        html2canvas(tempWrapper, {
+            scale: 2, // Keep high res for clarity, but physical dimensions are controlled by width above
+            backgroundColor: null,
+            useCORS: true
+        }).then(canvas => {
+            const image = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `Tria_Quiz_Result.png`;
+            link.href = image;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            document.body.removeChild(tempWrapper);
+        });
+    }
+
+    function shareOnX() {
+        const percentage = (gameState.score / MAX_QUESTIONS) * 100;
+        const feedback = getResultFeedback().title;
+        const tweetText = `I scored ${percentage.toFixed(0)}% on the Tria Quiz and earned the title of ${feedback}! Think you can beat my ${gameState.maxStreak} question streak? #Tria #TriaQuiz #Web3`;
+        
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+        window.open(twitterUrl, '_blank');
+    }
+
+</script>
+</body>
+</html>
